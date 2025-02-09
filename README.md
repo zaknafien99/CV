@@ -25,7 +25,7 @@ This repository contains the source code for a CV (Curriculum Vitae) website. Th
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/CV.git
+    git clone https://github.com/zaknafien99/CV.git
     ```
 2. Navigate to the project directory:
     ```bash
