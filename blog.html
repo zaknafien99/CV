@@ -8,20 +8,94 @@
             font-family: Arial, sans-serif;
             background-color: #f3f3f3;
             margin: 0;
-            padding: 0;
+            padding: 20px;
         }
         h1 {
             color: #333;
             text-align: center;
         }
-        p {
+        form {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input, textarea {
+            width: calc(100% - 20px);
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .post {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .post h2 {
+            margin: 0 0 10px;
             color: #333;
-            text-align: center;
+        }
+        .post p {
+            margin: 0;
+            color: #666;
         }
     </style>
 </head>
 <body>
     <h1>My Blog</h1>
-    <p>Welcome to my blog! Stay tuned for more posts.</p>
+    <form id="postForm">
+        <input type="text" id="postTitle" placeholder="Title" required>
+        <textarea id="postContent" placeholder="Write your thoughts here..." required></textarea>
+        <button type="submit">Add Post</button>
+    </form>
+    <div id="posts"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const postForm = document.getElementById('postForm');
+            const postTitle = document.getElementById('postTitle');
+            const postContent = document.getElementById('postContent');
+            const postsContainer = document.getElementById('posts');
+
+            const loadPosts = () => {
+                const posts = JSON.parse(localStorage.getItem('posts')) || [];
+                postsContainer.innerHTML = '';
+                posts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.className = 'post';
+                    postElement.innerHTML = `
+                        <h2>${post.title}</h2>
+                        <p>${post.content}</p>
+                    `;
+                    postsContainer.appendChild(postElement);
+                });
+            };
+
+            postForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const title = postTitle.value;
+                const content = postContent.value;
+                const posts = JSON.parse(localStorage.getItem('posts')) || [];
+                posts.push({ title, content });
+                localStorage.setItem('posts', JSON.stringify(posts));
+                loadPosts();
+                postForm.reset();
+            });
+
+            loadPosts();
+        });
+    </script>
 </body>
 </html>
