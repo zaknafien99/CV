@@ -78,6 +78,7 @@
                     postElement.innerHTML = `
                         <h2>${post.title}</h2>
                         <p>${post.content}</p>
+                        <small>Posted on: ${post.date}</small>
                     `;
                     postsContainer.appendChild(postElement);
                 });
@@ -87,8 +88,9 @@
                 e.preventDefault();
                 const title = postTitle.value;
                 const content = postContent.value;
+                const date = new Date().toLocaleString();
                 const posts = JSON.parse(localStorage.getItem('posts')) || [];
-                posts.push({ title, content });
+                posts.push({ title, content, date });
                 localStorage.setItem('posts', JSON.stringify(posts));
                 loadPosts();
                 postForm.reset();
