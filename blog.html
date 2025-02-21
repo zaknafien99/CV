@@ -79,8 +79,8 @@
                         <h2>${post.title}</h2>
                         <p>${post.content}</p>
                         <small>Posted on: ${post.date}</small>
-                        <button onclick="editPost(${index})">Edit</button>
                         <button onclick="deletePost(${index})">Delete</button>
+                        <button onclick="editPost(${index})">Edit</button>
                     `;
                     postsContainer.appendChild(postElement);
                 });
