@@ -72,7 +72,7 @@
             const loadPosts = () => {
                 const posts = JSON.parse(localStorage.getItem('posts')) || [];
                 postsContainer.innerHTML = '';
-                posts.forEach(post => {
+                posts.reverse().forEach(post => {
                     const postElement = document.createElement('div');
                     postElement.className = 'post';
                     postElement.innerHTML = `
