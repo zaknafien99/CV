@@ -72,16 +72,33 @@
             const loadPosts = () => {
                 const posts = JSON.parse(localStorage.getItem('posts')) || [];
                 postsContainer.innerHTML = '';
-                posts.reverse().forEach(post => {
+                posts.reverse().forEach((post, index) => {
                     const postElement = document.createElement('div');
                     postElement.className = 'post';
                     postElement.innerHTML = `
                         <h2>${post.title}</h2>
                         <p>${post.content}</p>
                         <small>Posted on: ${post.date}</small>
+                        <button onclick="editPost(${index})">Edit</button>
+                        <button onclick="deletePost(${index})">Delete</button>
                     `;
                     postsContainer.appendChild(postElement);
                 });
+            };
+
+            const editPost = (index) => {
+                const posts = JSON.parse(localStorage.getItem('posts')) || [];
+                const post = posts[posts.length - 1 - index];
+                postTitle.value = post.title;
+                postContent.value = post.content;
+                deletePost(index);
+            };
+
+            const deletePost = (index) => {
+                const posts = JSON.parse(localStorage.getItem('posts')) || [];
+                posts.splice(posts.length - 1 - index, 1);
+                localStorage.setItem('posts', JSON.stringify(posts));
+                loadPosts();
             };
 
             postForm.addEventListener('submit', (e) => {
