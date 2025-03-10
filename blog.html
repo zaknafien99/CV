@@ -92,7 +92,10 @@
                 const post = posts[posts.length - 1 - index];
                 postTitle.value = post.title;
                 postContent.value = post.content;
-                deletePost(index);
+                const saveButton = document.createElement('button');
+                saveButton.textContent = 'Save';
+                saveButton.onclick = () => saveEdit(index);
+                postForm.appendChild(saveButton);
             };
 
             const deletePost = (index) => {
@@ -100,6 +103,18 @@
                 posts.splice(posts.length - 1 - index, 1);
                 localStorage.setItem('posts', JSON.stringify(posts));
                 loadPosts();
+            };
+
+            const saveEdit = (index) => {
+                const posts = JSON.parse(localStorage.getItem('posts')) || [];
+                const post = posts[posts.length - 1 - index];
+                post.title = postTitle.value;
+                post.content = postContent.value;
+                post.date = new Date().toLocaleString();
+                localStorage.setItem('posts', JSON.stringify(posts));
+                loadPosts();
+                postForm.reset();
+                saveButton.remove();
             };
 
             postForm.addEventListener('submit', (e) => {
