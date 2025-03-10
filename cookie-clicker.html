@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Clicker Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f3f3f3;
+        }
+        img {
+            width: 200px;
+            cursor: pointer;
+        }
+        h1, h2 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cookie Clicker Game</h1>
+    <h2>Clicks: <span id="clickCount">0</span></h2>
+    <img src="milli-2l0CWTpcChI-unsplash.jpg" alt="Chocolate Chip Cookie" id="cookie">
+    <h2 id="timer">Time left: 30s</h2>
+
+    <script>
+        let clickCount = 0;
+        let timeLeft = 30;
+        const clickCountSpan = document.getElementById('clickCount');
+        const timerSpan = document.getElementById('timer');
+        const cookieImg = document.getElementById('cookie');
+
+        cookieImg.addEventListener('click', () => {
+            clickCount++;
+            clickCountSpan.textContent = clickCount;
+        });
+
+        const countdown = setInterval(() => {
+            timeLeft--;
+            timerSpan.textContent = `Time left: ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                cookieImg.removeEventListener('click', () => {});
+                alert(`Time's up! You clicked the cookie ${clickCount} times.`);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
