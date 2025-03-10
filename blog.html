@@ -100,7 +100,7 @@
 
             const deletePost = (index) => {
                 const posts = JSON.parse(localStorage.getItem('posts')) || [];
-                posts.splice(posts.length - 1 - index, 1);
+                posts.splice(index, 1);
                 localStorage.setItem('posts', JSON.stringify(posts));
                 loadPosts();
             };
