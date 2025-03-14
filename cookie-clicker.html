@@ -50,6 +50,14 @@
                 alert(`Time's up! You clicked the cookie ${clickCount} times.`);
             }
         }, 1000);
+        // add a high score feature
+        let highScore = localStorage.getItem('highScore') || 0;
+        if (clickCount > highScore) {
+            localStorage.setItem('highScore', clickCount);
+            alert(`New High Score! ${clickCount} clicks!`);
+        } else {
+            alert(`Your score: ${clickCount} clicks. High Score: ${highScore} clicks.`);
+        }
     </script>
     <a href="index.html">Back to Home</a>
 </body>
