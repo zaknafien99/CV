@@ -21,6 +21,13 @@
         h1, h2 {
             color: #333;
         }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -28,6 +35,8 @@
     <h2>Clicks: <span id="clickCount">0</span></h2>
     <img src="cookie.jpg" alt="Chocolate Chip Cookie" id="cookie">
     <h2 id="timer">Time left: 30s</h2>
+    <button id="restartButton">Restart Game</button>
+    <ul id="scoreList"></ul>
 
     <script>
         let clickCount = 0;
@@ -35,21 +44,49 @@
         const clickCountSpan = document.getElementById('clickCount');
         const timerSpan = document.getElementById('timer');
         const cookieImg = document.getElementById('cookie');
+        const restartButton = document.getElementById('restartButton');
+        const scoreList = document.getElementById('scoreList');
 
-        cookieImg.addEventListener('click', () => {
+        function updateClickCount() {
             clickCount++;
             clickCountSpan.textContent = clickCount;
-        });
+        }
 
-        const countdown = setInterval(() => {
+        function updateTimer() {
             timeLeft--;
             timerSpan.textContent = `Time left: ${timeLeft}s`;
             if (timeLeft <= 0) {
                 clearInterval(countdown);
-                cookieImg.removeEventListener('click', () => {});
+                cookieImg.removeEventListener('click', updateClickCount);
                 alert(`Time's up! You clicked the cookie ${clickCount} times.`);
+                addScoreToList(clickCount);
             }
-        }, 1000);
+        }
+
+        function addScoreToList(score) {
+            const li = document.createElement('li');
+            li.textContent = `Score: ${score}`;
+            scoreList.appendChild(li);
+        }
+
+        function resetGame() {
+            clickCount = 0;
+            timeLeft = 30;
+            clickCountSpan.textContent = clickCount;
+            timerSpan.textContent = `Time left: ${timeLeft}s`;
+            cookieImg.addEventListener('click', updateClickCount);
+            countdown = setInterval(updateTimer, 1000);
+        }
+
+        cookieImg.addEventListener('click', updateClickCount);
+
+        let countdown = setInterval(updateTimer, 1000);
+
+        restartButton.addEventListener('click', () => {
+            clearInterval(countdown);
+            resetGame();
+        });
+
         // add a high score feature
         let highScore = localStorage.getItem('highScore') || 0;
         if (clickCount > highScore) {
