@@ -4,7 +4,7 @@ CV website HTML training
 
 ## Description
 
-This repository contains the source code for a CV (Curriculum Vitae) website. The purpose of this project is to practice and improve HTML, CSS, and JavaScript skills by creating a personal CV website.
+This repository contains the source code for a CV (Curriculum Vitae) website. The purpose of this project is to practice and improve HTML, CSS, and JavaScript skills by creating a personal CV website. It also contains a simple cookie clicker game where you click a picture of a cookie and it counts the clicks, try and beat your record.
 
 ## Features
 
