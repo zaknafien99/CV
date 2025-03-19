@@ -73,50 +73,17 @@
             const loadPosts = () => {
                 const posts = JSON.parse(localStorage.getItem('posts')) || [];
                 postsContainer.innerHTML = '';
-                posts.reverse().forEach((post, index) => {
+                posts.reverse().forEach((post) => {
                     const postElement = document.createElement('div');
                     postElement.className = 'post';
                     postElement.innerHTML = `
                         <h2>${post.title}</h2>
                         <p>${post.content}</p>
                         <small>Posted on: ${post.date}</small>
-                        <button onclick="deletePost(${index})">Delete</button>
-                        <button onclick="editPost(${index})">Edit</button>
                     `;
                     postsContainer.appendChild(postElement);
                 });
             };
-
-            /* These don't work, you can't edit or delete the posts, don't know why.
-            const editPost = (index) => {
-                const posts = JSON.parse(localStorage.getItem('posts')) || [];
-                const post = posts[posts.length - 1 - index];
-                postTitle.value = post.title;
-                postContent.value = post.content;
-                const saveButton = document.createElement('button');
-                saveButton.textContent = 'Save';
-                saveButton.onclick = () => saveEdit(index);
-                postForm.appendChild(saveButton);
-            };
-
-             const deletePost = (index) => {
-                const posts = JSON.parse(localStorage.getItem('posts')) || [];
-                posts.splice(index, 1);                
-                localStorage.setItem('posts', JSON.stringify(posts));
-                loadPosts();
-            };
-
-            const saveEdit = (index) => {
-                const posts = JSON.parse(localStorage.getItem('posts')) || [];
-                const post = posts[posts.length - 1 - index];
-                post.title = postTitle.value;
-                post.content = postContent.value;
-                post.date = new Date().toLocaleString();
-                localStorage.setItem('posts', JSON.stringify(posts));
-                loadPosts();
-                postForm.reset();
-                saveButton.remove();
-            }; */
 
             postForm.addEventListener('submit', (e) => {
                 e.preventDefault();
