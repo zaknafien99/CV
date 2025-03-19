@@ -87,6 +87,7 @@
                 });
             };
 
+            /* These don't work, you can't edit or delete the posts, don't know why.
             const editPost = (index) => {
                 const posts = JSON.parse(localStorage.getItem('posts')) || [];
                 const post = posts[posts.length - 1 - index];
@@ -98,9 +99,9 @@
                 postForm.appendChild(saveButton);
             };
 
-            const deletePost = (index) => {
+             const deletePost = (index) => {
                 const posts = JSON.parse(localStorage.getItem('posts')) || [];
-                posts.splice(index, 1);
+                posts.splice(index, 1);                
                 localStorage.setItem('posts', JSON.stringify(posts));
                 loadPosts();
             };
@@ -115,7 +116,7 @@
                 loadPosts();
                 postForm.reset();
                 saveButton.remove();
-            };
+            }; */
 
             postForm.addEventListener('submit', (e) => {
                 e.preventDefault();
