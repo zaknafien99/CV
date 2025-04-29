@@ -143,6 +143,14 @@
         <hr> <!-- Adding a visual separation before the next section -->
         <footer>
             <p>&copy; 2023 Your Name. All rights reserved.</p> <!-- Include a footer for copyright -->
+            <script>
+                if (localStorage.pageViews) {
+                    localStorage.pageViews = Number(localStorage.pageViews) + 1;
+                } else {
+                    localStorage.pageViews = 1;
+                }
+                document.write("<p>Page Views: " + localStorage.pageViews + "</p>");
+            </script>
         </footer>
        
     </body>
