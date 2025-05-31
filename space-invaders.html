@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Invaders Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f3f3f3;
+        }
+        h1 {
+            color: #333; /* Keep this as is, or change if body background changes drastically */
+        }
+        #game-info p { /* Style for game info text */
+            color: #eee; /* Light color for text on dark body/canvas background */
+            margin: 5px 0;
+        }
+        #game-info { /* Container for game info */
+            background-color: rgba(0,0,0,0.5); /* Semi-transparent dark background for the info box */
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px; /* Space between info and canvas */
+        }
+        body { /* Modified body for better contrast with game info if needed */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a; /* Darker page background */
+        }
+        canvas {
+            border: 1px solid #555; /* Slightly lighter border for dark canvas */
+            background-color: #000000; /* Black background for the canvas itself */
+        }
+    </style>
+</head>
+<body>
+    <h1>Space Invaders Game</h1>
+    <div id="game-info">
+        <p>Use Arrow Keys to Move, Spacebar to Shoot.</p>
+        <p>Score: <span id='score'>0</span></p>
+        <p>Level: <span id='level'>1</span></p>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <a href="index.html">Back to Home</a>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const context = canvas.getContext('2d');
+
+        // AudioContext setup
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        try {
+            audioCtx = new AudioContext();
+        } catch (e) {
+            console.error("Web Audio API is not supported in this browser or AudioContext could not be created.", e);
+            // Sound functions will check if audioCtx is available
+        }
+
+        function playShootSound() {
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+            oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1); // Ramp down to A4
+
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Start with some volume
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1); // Fade out quickly
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playExplosionSound() {
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = 'sawtooth'; // Harsher sound
+            oscillator.frequency.setValueAtTime(200, audioCtx.currentTime); // Low frequency
+            oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.15); // Ramp down
+
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime); // Start with some volume
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.15); // Fade out
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+
+        const playerShip = {
+            width: 50,
+            height: 30,
+            x: canvas.width / 2 - 25, // Centered
+            y: canvas.height - 30 - 10, // At the bottom with padding
+            speed: 5,
+            color: '#33ccff' // Brighter blue for ship
+        };
+
+        const bulletProperties = {
+            radius: 4, // Slightly smaller bullets
+            speed: 8,  // Slightly faster bullets
+            color: '#FFFF00' // Yellow for bullets
+        };
+
+        let bullets = [];
+
+        const invaderProperties = {
+            width: 40,
+            height: 30,
+            color: '#9933ff', // Purple for invaders
+            padding: 10,
+            rowCount: 3,
+            columnCount: 8,
+            offsetTop: 30,
+            offsetLeft: 30,
+            speed: 1,
+            moveDirection: 1 // 1 for right, -1 for left
+        };
+
+        let invaders = [];
+        let score = 0;
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level'); // Get level display element
+        let gameOver = false;
+        let currentLevel = 1;
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = score;
+        }
+
+        function updateLevelDisplay() {
+            levelDisplay.textContent = currentLevel;
+        }
+
+        function startNewLevel() {
+            currentLevel++;
+            updateLevelDisplay();
+            invaderProperties.speed = currentLevel * 0.5 + 0.5; // Increase speed
+
+            // Brief "Level Complete / Get Ready" message - can be enhanced later
+            // For now, directly reset invaders.
+            // context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            // context.fillRect(0, 0, canvas.width, canvas.height);
+            // context.fillStyle = 'white';
+            // context.font = '30px sans-serif';
+            // context.textAlign = 'center';
+            // context.fillText(`Level ${currentLevel -1} Complete!`, canvas.width / 2, canvas.height / 2 - 20);
+            // context.fillText(`Get Ready for Level ${currentLevel}`, canvas.width / 2, canvas.height / 2 + 20);
+            // setTimeout(() => { // Clear message and start next level
+            // createInvaders(); // This needs to be called after timeout or keypress
+            // gameLoop(); // Potentially restart gameLoop if it was stopped
+            // }, 3000); // 3 second pause
+
+            bullets.length = 0; // Clear bullets
+            invaders.length = 0; // Clear previous invaders before creating new ones
+            createInvaders(); // Repopulate invaders for the new level
+        }
+
+        function createInvaders() {
+            // Ensure invaders array is empty before creating new ones for a new level
+            // This is now handled in startNewLevel before calling createInvaders if invaders.length = 0; is used there.
+            // If createInvaders is called directly, ensure it clears or correctly re-initializes.
+            // For this implementation, startNewLevel will clear invaders array first.
+
+            for (let r = 0; r < invaderProperties.rowCount; r++) {
+                for (let c = 0; c < invaderProperties.columnCount; c++) {
+                    invaders.push({
+                        x: invaderProperties.offsetLeft + c * (invaderProperties.width + invaderProperties.padding),
+                        y: invaderProperties.offsetTop + r * (invaderProperties.height + invaderProperties.padding), // Reset Y position
+                        width: invaderProperties.width,
+                        height: invaderProperties.height,
+                        status: 1 // 1 for alive
+                    });
+                }
+            }
+        }
+
+        function drawInvaders() {
+            for (let i = 0; i < invaders.length; i++) {
+                if (invaders[i].status === 1) {
+                    context.fillStyle = invaderProperties.color;
+                    context.fillRect(invaders[i].x, invaders[i].y, invaders[i].width, invaders[i].height);
+                }
+            }
+        }
+
+        function drawShip() {
+            // Main body
+            context.fillStyle = playerShip.color;
+            context.fillRect(playerShip.x, playerShip.y, playerShip.width, playerShip.height);
+            // Cockpit - a simple rectangle on top
+            context.fillStyle = '#FFFFFF'; // White cockpit
+            context.fillRect(
+                playerShip.x + playerShip.width / 2 - playerShip.width / 8, // Centered cockpit
+                playerShip.y + playerShip.height / 4, // Positioned towards the front
+                playerShip.width / 4,
+                playerShip.height / 2
+            );
+        }
+
+        function drawBullets() {
+            for (let i = 0; i < bullets.length; i++) {
+                const bullet = bullets[i];
+                context.beginPath();
+                context.arc(bullet.x, bullet.y, bulletProperties.radius, 0, Math.PI * 2, false);
+                context.fillStyle = bulletProperties.color;
+                context.fill();
+                context.closePath();
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (gameOver) return; // Prevent input if game is over
+
+            if (event.key === 'ArrowLeft') {
+                playerShip.x -= playerShip.speed;
+            } else if (event.key === 'ArrowRight') {
+                playerShip.x += playerShip.speed;
+            } else if (event.code === 'Space') {
+                const newBullet = {
+                    x: playerShip.x + playerShip.width / 2,
+                    y: playerShip.y,
+                };
+                bullets.push(newBullet);
+                playShootSound(); // Play sound when shooting
+            }
+
+            // Boundary checks
+            if (playerShip.x < 0) {
+                playerShip.x = 0;
+            }
+            if (playerShip.x + playerShip.width > canvas.width) {
+                playerShip.x = canvas.width - playerShip.width;
+            }
+        });
+
+        function gameLoop() {
+            if (gameOver) {
+                context.fillStyle = 'rgba(0, 0, 0, 0.75)'; // Semi-transparent overlay
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.fillStyle = 'white';
+                context.font = '48px sans-serif';
+                context.textAlign = 'center';
+                context.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
+                context.font = '24px sans-serif';
+                context.fillText('Final Score: ' + score, canvas.width / 2, canvas.height / 2 + 20);
+                return; // Stop the game loop
+            }
+
+            // Clear the canvas (already happens if canvas has a CSS background color,
+            // but if drawing background via JS, this clearRect might be removed or happen after bg fill)
+            // For now, assuming CSS background handles the black canvas, so clearRect is fine.
+            // If we were filling background in JS:
+            // context.fillStyle = '#000000';
+            // context.fillRect(0, 0, canvas.width, canvas.height);
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+
+            // Update ship position (already handled by keydown listener, which checks gameOver)
+
+            // Update bullets positions
+            for (let i = 0; i < bullets.length; i++) {
+                bullets[i].y -= bulletProperties.speed;
+                // Remove bullet if it goes off-screen (top)
+                if (bullets[i].y + bulletProperties.radius < 0) { // Consider radius for off-screen check
+                    bullets.splice(i, 1);
+                    i--;
+                }
+            }
+
+            // Update invaders positions & Check Game Over
+            let edgeReached = false;
+            for (let i = 0; i < invaders.length; i++) {
+                if (invaders[i].status === 1) {
+                    invaders[i].x += invaderProperties.speed * invaderProperties.moveDirection;
+                    if (invaders[i].x + invaders[i].width > canvas.width || invaders[i].x < 0) {
+                        edgeReached = true;
+                    }
+                    // Check for Game Over by invaders reaching bottom
+                    if (invaders[i].y + invaders[i].height >= canvas.height) {
+                        gameOver = true;
+                        // gameLoop will handle display and exit on next iteration
+                    }
+                }
+            }
+
+            if (edgeReached) {
+                invaderProperties.moveDirection *= -1;
+                for (let i = 0; i < invaders.length; i++) {
+                    if (invaders[i].status === 1) { // Only move active invaders
+                        invaders[i].y += invaderProperties.height;
+                        // Check again if invaders reached bottom after moving down
+                        if (invaders[i].y + invaders[i].height >= canvas.height) {
+                            gameOver = true;
+                        }
+                    }
+                }
+            }
+
+            // Detect Collisions & Check for Level Completion
+            let activeInvadersCount = 0;
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                for (let j = invaders.length - 1; j >= 0; j--) {
+                    const invader = invaders[j];
+                    if (invader.status === 1) {
+                        if (bullet.x > invader.x &&
+                            bullet.x < invader.x + invader.width &&
+                            bullet.y > invader.y &&
+                            bullet.y < invader.y + invader.height) {
+
+                            invader.status = 0;
+                            playExplosionSound(); // Play sound on invader hit
+                            bullets.splice(i, 1);
+                            score += 10;
+                            updateScoreDisplay();
+                            // No need to count active invaders here again, will do it once after collision checks
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Check for level completion after processing all collisions
+            activeInvadersCount = 0; // Recalculate active invaders
+            for(let k=0; k < invaders.length; k++){
+                if(invaders[k].status === 1){
+                    activeInvadersCount++;
+                }
+            }
+
+            if (activeInvadersCount === 0 && invaders.length > 0) { // invaders.length > 0 ensures it's not before first level creation
+                startNewLevel();
+            }
+
+            // Draw everything
+            drawShip();
+            drawBullets(); // Draw remaining bullets
+            drawInvaders(); // Draw remaining invaders
+
+            // Request next frame
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize
+        updateLevelDisplay(); // Display initial level
+        createInvaders();
+        updateScoreDisplay(); // Display initial score
+        // Start the game loop
+        gameLoop();
+    </script>
+</body>
+</html>
