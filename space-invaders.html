@@ -56,6 +56,52 @@
         const canvas = document.getElementById('gameCanvas');
         const context = canvas.getContext('2d');
 
+        // AudioContext setup
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        try {
+            audioCtx = new AudioContext();
+        } catch (e) {
+            console.error("Web Audio API is not supported in this browser or AudioContext could not be created.", e);
+            // Sound functions will check if audioCtx is available
+        }
+
+        function playShootSound() {
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+            oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1); // Ramp down to A4
+
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Start with some volume
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1); // Fade out quickly
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playExplosionSound() {
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = 'sawtooth'; // Harsher sound
+            oscillator.frequency.setValueAtTime(200, audioCtx.currentTime); // Low frequency
+            oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.15); // Ramp down
+
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime); // Start with some volume
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.15); // Fade out
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+
         const playerShip = {
             width: 50,
             height: 30,
@@ -191,6 +237,7 @@
                     y: playerShip.y,
                 };
                 bullets.push(newBullet);
+                playShootSound(); // Play sound when shooting
             }
 
             // Boundary checks
@@ -278,6 +325,7 @@
                             bullet.y < invader.y + invader.height) {
 
                             invader.status = 0;
+                            playExplosionSound(); // Play sound on invader hit
                             bullets.splice(i, 1);
                             score += 10;
                             updateScoreDisplay();
