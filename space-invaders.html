@@ -202,8 +202,12 @@
             currentLevel++;
             updateLevelDisplay();
             invaderProperties.speed = currentLevel * 0.5 + 0.5; // Increase speed
+            // Set a maximum value for invaderRowCount to prevent canvas overflow
+            const MAX_INVADER_ROWS = 8;
             if (currentLevel % 5 === 0) {
-                invaderRowCount++;
+                if (invaderRowCount < MAX_INVADER_ROWS) {
+                    invaderRowCount++;
+                }
             }
 
             // Brief "Level Complete / Get Ready" message - can be enhanced later
