@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -48,6 +49,7 @@
         <p>Use Arrow Keys to Move, Spacebar to Shoot.</p>
         <p>Score: <span id='score'>0</span></p>
         <p>Level: <span id='level'>1</span></p>
+        <p>Lives: <span id='lives'>3</span></p>
     </div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <a href="index.html">Back to Home</a>
@@ -103,28 +105,56 @@
         }
 
         const playerShip = {
-            width: 50,
-            height: 30,
-            x: canvas.width / 2 - 25, // Centered
-            y: canvas.height - 30 - 10, // At the bottom with padding
+            width: 40,
+            height: 20,
+            x: canvas.width / 2 - 20, // Centered
+            y: canvas.height - 20 - 10, // At the bottom with padding
             speed: 5,
-            color: '#33ccff' // Brighter blue for ship
+            color: '#00FF00', // Green for ship
+            lives: 3,
+            state: 'alive', // 'alive', 'exploding', 'respawning'
+            explodeTime: 0
         };
 
+        const playerExplosionSprite = [
+            [0,0,1,1,1,1,0,0],
+            [0,1,1,1,1,1,1,0],
+            [1,1,0,1,1,0,1,1],
+            [1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1],
+            [1,1,0,1,1,0,1,1],
+            [0,1,1,1,1,1,1,0],
+            [0,0,1,1,1,1,0,0],
+        ];
+
         const bulletProperties = {
-            radius: 4, // Slightly smaller bullets
-            speed: 8,  // Slightly faster bullets
-            color: '#FFFF00' // Yellow for bullets
+            width: 3,
+            height: 7,
+            speed: 8,
+            color: '#FFFFFF' // White for bullets
         };
 
         let bullets = [];
 
+        const alienSprites = [
+            [ // Squid
+                [0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,0,0,1,1,1],[1,1,1,1,1,1,1,1],[0,0,1,0,0,1,0,0],[0,1,0,1,1,0,1,0],[1,0,1,0,0,1,0,1]
+            ],
+            [ // Crab
+                [0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,0,1,1,1,1,0,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,0,0,1,0,0],[0,1,0,1,1,0,1,0],[1,0,1,0,0,1,0,1]
+            ],
+            [ // Octopus
+                [0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,0,1,1,1,1,0,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[1,0,1,0,0,1,0,1],[0,1,0,1,1,0,1,0],[1,0,1,0,0,1,0,1]
+            ]
+        ];
+
+        let invaderRowCount = 3;
+
         const invaderProperties = {
-            width: 40,
-            height: 30,
-            color: '#9933ff', // Purple for invaders
+            width: 24,
+            height: 24,
+            color: '#FFFFFF', // White for invaders
             padding: 10,
-            rowCount: 3,
             columnCount: 8,
             offsetTop: 30,
             offsetLeft: 30,
@@ -132,15 +162,36 @@
             moveDirection: 1 // 1 for right, -1 for left
         };
 
+        const bunkerSize = 8; // size of a bunker 'pixel'
+        const bunkerPixels = [
+            [0,1,1,1,0],
+            [1,1,1,1,1],
+            [1,1,1,1,1],
+            [1,0,0,0,1],
+            [1,0,0,0,1]
+        ];
+        let bunkers = [];
         let invaders = [];
+        let invaderBullets = [];
+        const invaderBulletProperties = {
+            width: 3,
+            height: 7,
+            speed: 5,
+            color: '#FFFFFF'
+        };
         let score = 0;
         const scoreDisplay = document.getElementById('score');
         const levelDisplay = document.getElementById('level'); // Get level display element
+        const livesDisplay = document.getElementById('lives');
         let gameOver = false;
         let currentLevel = 1;
 
         function updateScoreDisplay() {
             scoreDisplay.textContent = score;
+        }
+
+        function updateLivesDisplay() {
+            livesDisplay.textContent = playerShip.lives;
         }
 
         function updateLevelDisplay() {
@@ -151,6 +202,9 @@
             currentLevel++;
             updateLevelDisplay();
             invaderProperties.speed = currentLevel * 0.5 + 0.5; // Increase speed
+            if (currentLevel % 5 === 0) {
+                invaderRowCount++;
+            }
 
             // Brief "Level Complete / Get Ready" message - can be enhanced later
             // For now, directly reset invaders.
@@ -172,19 +226,16 @@
         }
 
         function createInvaders() {
-            // Ensure invaders array is empty before creating new ones for a new level
-            // This is now handled in startNewLevel before calling createInvaders if invaders.length = 0; is used there.
-            // If createInvaders is called directly, ensure it clears or correctly re-initializes.
-            // For this implementation, startNewLevel will clear invaders array first.
-
-            for (let r = 0; r < invaderProperties.rowCount; r++) {
+            invaders.length = 0; // Clear existing invaders
+            for (let r = 0; r < invaderRowCount; r++) {
                 for (let c = 0; c < invaderProperties.columnCount; c++) {
                     invaders.push({
                         x: invaderProperties.offsetLeft + c * (invaderProperties.width + invaderProperties.padding),
-                        y: invaderProperties.offsetTop + r * (invaderProperties.height + invaderProperties.padding), // Reset Y position
+                        y: invaderProperties.offsetTop + r * (invaderProperties.height + invaderProperties.padding),
                         width: invaderProperties.width,
                         height: invaderProperties.height,
-                        status: 1 // 1 for alive
+                        status: 1, // 1 for alive
+                        type: r % 3
                     });
                 }
             }
@@ -193,39 +244,126 @@
         function drawInvaders() {
             for (let i = 0; i < invaders.length; i++) {
                 if (invaders[i].status === 1) {
+                    const invader = invaders[i];
+                    const sprite = alienSprites[invader.type];
                     context.fillStyle = invaderProperties.color;
-                    context.fillRect(invaders[i].x, invaders[i].y, invaders[i].width, invaders[i].height);
+                    for (let y = 0; y < sprite.length; y++) {
+                        for (let x = 0; x < sprite[y].length; x++) {
+                            if (sprite[y][x] === 1) {
+                                context.fillRect(invader.x + x * 3, invader.y + y * 3, 3, 3);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function createBunkers() {
+            const bunkerWidth = bunkerPixels[0].length * bunkerSize;
+            const spacing = (canvas.width - 4 * bunkerWidth) / 5;
+            for (let i = 0; i < 4; i++) {
+                const bunkerX = spacing * (i + 1) + bunkerWidth * i;
+                const bunkerY = 450;
+                let pixels = [];
+                for (let r = 0; r < bunkerPixels.length; r++) {
+                    pixels[r] = bunkerPixels[r].slice();
+                }
+                bunkers.push({ x: bunkerX, y: bunkerY, pixels: pixels });
+            }
+        }
+
+        function drawBunkers() {
+            context.fillStyle = '#00FF00'; // Green
+            for (let i = 0; i < bunkers.length; i++) {
+                const bunker = bunkers[i];
+                for (let r = 0; r < bunker.pixels.length; r++) {
+                    for (let c = 0; c < bunker.pixels[r].length; c++) {
+                        if (bunker.pixels[r][c] === 1) {
+                            context.fillRect(bunker.x + c * bunkerSize, bunker.y + r * bunkerSize, bunkerSize, bunkerSize);
+                        }
+                    }
                 }
             }
         }
 
         function drawShip() {
-            // Main body
-            context.fillStyle = playerShip.color;
-            context.fillRect(playerShip.x, playerShip.y, playerShip.width, playerShip.height);
-            // Cockpit - a simple rectangle on top
-            context.fillStyle = '#FFFFFF'; // White cockpit
-            context.fillRect(
-                playerShip.x + playerShip.width / 2 - playerShip.width / 8, // Centered cockpit
-                playerShip.y + playerShip.height / 4, // Positioned towards the front
-                playerShip.width / 4,
-                playerShip.height / 2
-            );
-        }
-
-        function drawBullets() {
-            for (let i = 0; i < bullets.length; i++) {
-                const bullet = bullets[i];
-                context.beginPath();
-                context.arc(bullet.x, bullet.y, bulletProperties.radius, 0, Math.PI * 2, false);
-                context.fillStyle = bulletProperties.color;
-                context.fill();
-                context.closePath();
+            if (playerShip.state === 'exploding') {
+                context.fillStyle = '#FF0000'; // Red for explosion
+                for (let y = 0; y < playerExplosionSprite.length; y++) {
+                    for (let x = 0; x < playerExplosionSprite[y].length; x++) {
+                        if (playerExplosionSprite[y][x] === 1) {
+                            context.fillRect(playerShip.x + x * 5, playerShip.y + y * 5, 5, 5);
+                        }
+                    }
+                }
+            } else if (playerShip.state === 'alive' || (playerShip.state === 'respawning' && playerShip.explodeTime % 10 < 5)) {
+                context.fillStyle = playerShip.color;
+                // Base of the ship
+                context.fillRect(playerShip.x, playerShip.y, playerShip.width, playerShip.height);
+                // Cannon
+                context.fillRect(playerShip.x + playerShip.width / 2 - 5, playerShip.y - 10, 10, 10);
             }
         }
 
+        function drawBullets() {
+            context.fillStyle = bulletProperties.color;
+            for (let i = 0; i < bullets.length; i++) {
+                const bullet = bullets[i];
+                context.fillRect(bullet.x, bullet.y, bulletProperties.width, bulletProperties.height);
+            }
+        }
+
+        function invaderShoot(invader) {
+            invaderBullets.push({
+                x: invader.x + invader.width / 2,
+                y: invader.y + invader.height,
+                width: invaderBulletProperties.width,
+                height: invaderBulletProperties.height
+            });
+        }
+
+        function drawInvaderBullets() {
+            context.fillStyle = invaderBulletProperties.color;
+            for (let i = 0; i < invaderBullets.length; i++) {
+                const bullet = invaderBullets[i];
+                context.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            }
+        }
+
+        function checkPlayerCollision(bullet) {
+            if (bullet.x < playerShip.x + playerShip.width &&
+                bullet.x + invaderBulletProperties.width > playerShip.x &&
+                bullet.y < playerShip.y + playerShip.height &&
+                bullet.y + invaderBulletProperties.height > playerShip.y) {
+                return true;
+            }
+            return false;
+        }
+
+        function checkBunkerCollision(bullet) {
+            for (let i = 0; i < bunkers.length; i++) {
+                const bunker = bunkers[i];
+                for (let r = 0; r < bunker.pixels.length; r++) {
+                    for (let c = 0; c < bunker.pixels[r].length; c++) {
+                        if (bunker.pixels[r][c] === 1) {
+                            const pixelX = bunker.x + c * bunkerSize;
+                            const pixelY = bunker.y + r * bunkerSize;
+                            if (bullet.x < pixelX + bunkerSize &&
+                                bullet.x + bulletProperties.width > pixelX &&
+                                bullet.y < pixelY + bunkerSize &&
+                                bullet.y + bulletProperties.height > pixelY) {
+                                bunker.pixels[r][c] = 0; // Destroy the pixel
+                                return true; // Collision detected
+                            }
+                        }
+                    }
+                }
+            }
+            return false; // No collision
+        }
+
         document.addEventListener('keydown', function(event) {
-            if (gameOver) return; // Prevent input if game is over
+            if (gameOver || playerShip.state !== 'alive') return; // Prevent input if game is over or player is not alive
 
             if (event.key === 'ArrowLeft') {
                 playerShip.x -= playerShip.speed;
@@ -233,7 +371,7 @@
                 playerShip.x += playerShip.speed;
             } else if (event.code === 'Space') {
                 const newBullet = {
-                    x: playerShip.x + playerShip.width / 2,
+                    x: playerShip.x + playerShip.width / 2 - bulletProperties.width / 2,
                     y: playerShip.y,
                 };
                 bullets.push(newBullet);
@@ -272,14 +410,65 @@
 
 
             // Update ship position (already handled by keydown listener, which checks gameOver)
+            if (playerShip.state === 'exploding') {
+                playerShip.explodeTime--;
+                if (playerShip.explodeTime === 0) {
+                    playerShip.state = 'respawning';
+                    playerShip.x = canvas.width / 2 - 20; // Reset position
+                    playerShip.explodeTime = 120; // 2 seconds of invincibility
+                }
+            } else if (playerShip.state === 'respawning') {
+                playerShip.explodeTime--;
+                if (playerShip.explodeTime === 0) {
+                    playerShip.state = 'alive';
+                }
+            }
 
             // Update bullets positions
-            for (let i = 0; i < bullets.length; i++) {
+            for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].y -= bulletProperties.speed;
-                // Remove bullet if it goes off-screen (top)
-                if (bullets[i].y + bulletProperties.radius < 0) { // Consider radius for off-screen check
+                if (checkBunkerCollision(bullets[i])) {
                     bullets.splice(i, 1);
-                    i--;
+                    continue;
+                }
+                // Remove bullet if it goes off-screen (top)
+                if (bullets[i].y + bulletProperties.height < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Invader shooting
+            if (Math.random() < 0.01) { // Adjust probability as needed
+                const shootingInvaders = invaders.filter(invader => invader.status === 1);
+                if (shootingInvaders.length > 0) {
+                    const randomInvader = shootingInvaders[Math.floor(Math.random() * shootingInvaders.length)];
+                    invaderShoot(randomInvader);
+                }
+            }
+
+            // Update invader bullets positions
+            for (let i = invaderBullets.length - 1; i >= 0; i--) {
+                invaderBullets[i].y += invaderBulletProperties.speed;
+                if (checkBunkerCollision(invaderBullets[i])) {
+                    invaderBullets.splice(i, 1);
+                    continue;
+                }
+                if (playerShip.state === 'alive' && checkPlayerCollision(invaderBullets[i])) {
+                    invaderBullets.splice(i, 1);
+                    playerShip.lives--;
+                    updateLivesDisplay();
+                    if (playerShip.lives === 0) {
+                        gameOver = true;
+                    } else {
+                        playerShip.state = 'exploding';
+                        playerShip.explodeTime = 60; // 1 second at 60fps
+                        playExplosionSound();
+                    }
+                    continue;
+                }
+                // Remove bullet if it goes off-screen (bottom)
+                if (invaderBullets[i].y > canvas.height) {
+                    invaderBullets.splice(i, 1);
                 }
             }
 
@@ -349,8 +538,10 @@
             }
 
             // Draw everything
+            drawBunkers();
             drawShip();
             drawBullets(); // Draw remaining bullets
+            drawInvaderBullets();
             drawInvaders(); // Draw remaining invaders
 
             // Request next frame
@@ -359,6 +550,8 @@
 
         // Initialize
         updateLevelDisplay(); // Display initial level
+        updateLivesDisplay();
+        createBunkers();
         createInvaders();
         updateScoreDisplay(); // Display initial score
         // Start the game loop
