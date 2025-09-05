@@ -1,107 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Blog</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f3f3f3;
-            margin: 0;
-            padding: 20px;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        form {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
-            background: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        input, textarea {
-            width: calc(100% - 20px);
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #333;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .post {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
-            background: #fff;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .post h2 {
-            margin: 0 0 10px;
-            color: #333;
-        }
-        .post p {
-            margin: 0;
-            color: #666;
-        }
-    </style>
-</head>
-<body>
-    <h1>My Blog</h1>
-    <form id="postForm">
-        <input type="text" id="postTitle" placeholder="Title" required>
-        <textarea id="postContent" placeholder="Write your thoughts here..." required></textarea>
-        <button type="submit">Add Post</button>
-    </form>
-    <div id="posts"></div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', (event) => {
-            const postForm = document.getElementById('postForm');
-            const postTitle = document.getElementById('postTitle');
-            const postContent = document.getElementById('postContent');
-            const postsContainer = document.getElementById('posts');
-
-            const loadPosts = () => {
-                const posts = JSON.parse(localStorage.getItem('posts')) || [];
-                postsContainer.innerHTML = '';
-                posts.reverse().forEach((post) => {
-                    const postElement = document.createElement('div');
-                    postElement.className = 'post';
-                    postElement.innerHTML = `
-                        <h2>${post.title}</h2>
-                        <p>${post.content}</p>
-                        <small>Posted on: ${post.date}</small>
-                    `;
-                    postsContainer.appendChild(postElement);
-                });
-            };
-
-            postForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const title = postTitle.value;
-                const content = postContent.value;
-                const date = new Date().toLocaleString();
-                const posts = JSON.parse(localStorage.getItem('posts')) || [];
-                posts.push({ title, content, date });
-                localStorage.setItem('posts', JSON.stringify(posts));
-                loadPosts();
-                postForm.reset();
-            });
-
-            loadPosts();
-        });
-    </script>
-</body>
-<footer>
-    <p>Created by me. Return <a href="index.html">home</a></p>
-</footer>
-</html>
+---
+layout: default
+title: Blog
+---
+<div class="posts">
+  {% for post in site.posts %}
+    <div class="post">
+      <h2 class="post-title">
+        <a href="{{ post.url | relative_url }}">
+          {{ post.title }}
+        </a>
+      </h2>
+      <p class="post-meta">{{ post.date | date: "%B %d, %Y" }}</p>
+      <p>{{ post.excerpt }}</p>
+    </div>
+  {% endfor %}
+</div>
