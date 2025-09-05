@@ -1,0 +1,128 @@
+/* General Body Styles */
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* Header and Navigation */
+header {
+    background: linear-gradient(to right, #6a11cb, #2575fc);
+    color: #fff;
+    padding: 1rem 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+header h1 a {
+    margin: 0;
+    font-size: 2.5rem;
+    color: #fff;
+    text-decoration: none;
+}
+
+nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+nav a {
+    color: #fff;
+    text-decoration: none;
+    margin: 0 15px;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+nav a:hover {
+    color: #ddd;
+}
+
+/* Main Content */
+main {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+/* Blog Posts */
+.posts .post {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.post-title a {
+    text-decoration: none;
+    color: #6a11cb;
+}
+
+.post-meta {
+    color: #777;
+    font-size: 0.9rem;
+}
+
+.post-content {
+    margin-top: 1rem;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 2rem 0;
+    color: #777;
+    font-size: 0.9rem;
+}
+
+footer a {
+    color: #6a11cb;
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 50%;
+}
+
+table {
+    margin: 0 auto;
+}
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 10px;
+    text-align: left;
+}
+th {
+    background-color: lightblue;
+}
+td {
+    background-color: #f9f9f9;
+}
+.nav-links {
+    text-align: center;
+    margin: 20px 0;
+}
+.nav-links a {
+    margin: 0 10px;
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+}
+.nav-links a:hover {
+    text-decoration: underline;
+}
