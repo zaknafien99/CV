@@ -1,8 +1,22 @@
----
-layout: default
-title: Home
----
-<img src="{{ '/milli-2l0CWTpcChI-unsplash.jpg' | relative_url }}" alt="Cute" width="500" height="333">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - My Awesome Blog</title>
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1><a href="/">My Awesome Blog</a></h1>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/blog.html">Blog</a>
+            <a href="/contact-me.html">Contact</a>
+        </nav>
+    </header>
+    <main>
+        <img src="/milli-2l0CWTpcChI-unsplash.jpg" alt="Cute" width="500" height="333">
 <h1>About Me</h1>
 <p><em>Audio Visual Support Ninja</em></p>
 <p>I am a web and .net developer</p>
@@ -73,17 +87,17 @@ title: Home
 
 <div class="nav-links">
     <h3>Links</h3>
-    <a href="{{ '/contact-me.html' | relative_url }}">Contact Me</a>
-    <a href="{{ '/blog.html' | relative_url }}">Blog</a>
-    <a href="{{ '/cookie-clicker.html' | relative_url }}">Cookie Clicker Game</a>
-    <a href="{{ '/space-invaders.html' | relative_url }}">Space Invaders Game</a>
+    <a href="/contact-me.html">Contact Me</a>
+    <a href="/blog.html">Blog</a>
+    <a href="/cookie-clicker.html">Cookie Clicker Game</a>
+    <a href="/space-invaders.html">Space Invaders Game</a>
 </div>
 
 
 <hr> <!-- Adding a visual separation before the next section -->
 <footer>
     <p>&copy; 2023 Your Name. All rights reserved.</p>
-    <p>Git Commit: {{ site.data['hash'] }} </p>
+    <p>Git Commit: 49a6873 </p>
     <script>
         if (localStorage.pageViews) {
             localStorage.pageViews = Number(localStorage.pageViews) + 1;
@@ -93,3 +107,10 @@ title: Home
         document.write("<p>Page Views: " + localStorage.pageViews + "</p>");
     </script>
 </footer>
+
+    </main>
+    <footer>
+        <p>A blog about my journey as a developer.</p>
+    </footer>
+</body>
+</html>
