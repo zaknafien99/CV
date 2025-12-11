@@ -1,2 +1,4 @@
 title: My Awesome Blog
 description: A blog about my journey as a developer.
+gems:
+  - jekyll-git-hash

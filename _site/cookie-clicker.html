@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Clicker Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f3f3f3;
+        }
+        img {
+            width: 200px;
+            cursor: pointer;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cookie Clicker Game</h1>
+    <h2>Clicks: <span id="clickCount">0</span></h2>
+    <img src="cookie.jpg" alt="Chocolate Chip Cookie" id="cookie">
+    <h2 id="timer">Time left: 30s</h2>
+    <button id="restartButton">Restart Game</button>
+    <ul id="scoreList"></ul>
+
+    <script>
+        let clickCount = 0;
+        let timeLeft = 30;
+        const clickCountSpan = document.getElementById('clickCount');
+        const timerSpan = document.getElementById('timer');
+        const cookieImg = document.getElementById('cookie');
+        const restartButton = document.getElementById('restartButton');
+        const scoreList = document.getElementById('scoreList');
+
+        function updateClickCount() {
+            clickCount++;
+            clickCountSpan.textContent = clickCount;
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            timerSpan.textContent = `Time left: ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                cookieImg.removeEventListener('click', updateClickCount);
+                alert(`Time's up! You clicked the cookie ${clickCount} times.`);
+                addScoreToList(clickCount);
+            }
+        }
+
+        function addScoreToList(score) {
+            const li = document.createElement('li');
+            li.textContent = `Score: ${score}`;
+            scoreList.appendChild(li);
+        }
+
+        function resetGame() {
+            clickCount = 0;
+            timeLeft = 30;
+            clickCountSpan.textContent = clickCount;
+            timerSpan.textContent = `Time left: ${timeLeft}s`;
+            cookieImg.addEventListener('click', updateClickCount);
+            countdown = setInterval(updateTimer, 1000);
+        }
+
+        cookieImg.addEventListener('click', updateClickCount);
+
+        let countdown = setInterval(updateTimer, 1000);
+
+        restartButton.addEventListener('click', () => {
+            clearInterval(countdown);
+            resetGame();
+        });
+
+        // add a high score feature
+        let highScore = localStorage.getItem('highScore') || 0;
+        if (clickCount > highScore) {
+            localStorage.setItem('highScore', clickCount);
+            alert(`New High Score! ${clickCount} clicks!`);
+        } else {
+            alert(`Your score: ${clickCount} clicks. High Score: ${highScore} clicks.`);
+        }
+    </script>
+    <a href="index.html">Back to Home</a>
+</body>
+</html>
