@@ -60,6 +60,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+
           OWNER="${GITHUB_REPOSITORY%/*}"
           REPO="${GITHUB_REPOSITORY#*/}"
           DEFAULT_BRANCH="$DEFAULT_BRANCH"
@@ -74,7 +76,7 @@ jobs:
           iso_to_epoch() { date -d "$1" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$1" +%s 2>/dev/null || echo 0; }
 
           now_epoch=$(date +%s)
-          candidates_json="[]"
+          candidates=""
 
           page=1
           per_page=100
@@ -87,7 +89,7 @@ jobs:
 
             for i in $(seq 0 $(($cnt - 1))); do
               name=$(echo "$resp" | jq -r ".[$i].name")
-              commit_date=$(echo "$resp" | jq -r ".[$i].commit.commit.committer.date")
+              commit_date=$(echo "$resp" | jq -r ".[$i].commit.commit.committer.date // empty")
               commit_epoch=$(iso_to_epoch "$commit_date")
               if [ "$commit_epoch" -eq 0 ]; then age_days=99999; else age_days=$(( (now_epoch - commit_epoch) / 86400 )); fi
 
@@ -131,10 +133,102 @@ jobs:
               protected=false
               gh api -H "Accept: application/vnd.github.v3+json" "/repos/${OWNER}/${REPO}/branches/${name}/protection" >/dev/null 2>&1 && protected=true || protected=false
 
-              # Open PRs
+              # Open PRs (count)
               prs_open=$(gh api -H "Accept: application/vnd.github.v3+json" "/repos/${OWNER}/${REPO}/pulls?state=open&head=${OWNER}:${name}" --jq 'length' || echo 0)
+              prs_open=${prs_open:-0}
 
-              # Closed PRs - check if merged
+              # Closed PRs - check if any merged
               prs_closed=$(gh api -H "Accept: application/vnd.github.v3+json" "/repos/${OWNER}/${REPO}/pulls?state=closed&head=${OWNER}:${name}" || echo "[]")
+              merged_cnt=$(echo "$prs_closed" | jq '[.[] | select(.merged_at != null)] | length' 2>/dev/null || echo 0)
               merged=false
-              closed_cnt=$(echo "$prs_closed
+              if [ "$merged_cnt" -gt 0 ]; then merged=true; fi
+
+              # Determine candidate: old enough, no open PRs, not protected, and not merged (optional policy)
+              if [ "$age_days" -ge "$DAYS" ] && [ "$protected" = "false" ] && [ "$prs_open" -eq 0 ]; then
+                # Build JSON object for candidate
+                obj=$(jq -n \
+                  --arg name "$name" \
+                  --arg last_commit "${commit_date:-unknown}" \
+                  --argjson age "$age_days" \
+                  --argjson open_prs "$prs_open" \
+                  --argjson merged "$merged" \
+                  --argjson protected "$protected" \
+                  '{name:$name, last_commit:$last_commit, age_days:$age, open_prs:$open_prs, merged:$merged, protected:($protected=="true")}')
+                candidates="$candidates"$'\n"$obj"
+              fi
+            done
+
+            page=$((page + 1))
+          done
+
+          # Normalize candidates into JSON array
+          if [ -z "$(echo "$candidates" | tr -d '[:space:]')" ]; then
+            candidates_json="[]"
+          else
+            # remove any empty lines then join with commas
+            candidates_json=$(printf '[%s]' "$(echo "$candidates" | sed '/^\s*$/d' | paste -sd, -)")
+          fi
+
+          echo "CANDIDATES_JSON=$candidates_json" >> $GITHUB_ENV
+          echo "::group::Branch cleanup candidates"
+          echo "$candidates_json" | jq -r '.'
+          echo "::endgroup::"
+
+      - name: Report or delete candidates
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          OWNER="${GITHUB_REPOSITORY%/*}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          DELETE_MODE="$DELETE_MODE"
+          DRY_RUN="$DRY_RUN"
+          candidates_json="$CANDIDATES_JSON"
+
+          total=$(echo "$candidates_json" | jq 'length')
+          if [ "$total" -eq 0 ]; then
+            echo "No candidate branches found."
+            exit 0
+          fi
+
+          # Build markdown body
+          body="# Branch cleanup report\n\n"
+          body+="Repository: ${OWNER}/${REPO}\n\n"
+          body+="Found **${total}** candidate branch(es) older than ${DAYS} days:\n\n"
+          body+="| Branch | Age (days) | Last commit | Open PRs | Merged | Protected |\n"
+          body+="|---|---:|---|---:|---:|---|\n"
+          body+=$(echo "$candidates_json" | jq -r '.[] | "| " + .name + " | " + (.age_days|tostring) + " | " + (.last_commit // "unknown") + " | " + (.open_prs|tostring) + " | " + (.merged|tostring) + " | " + (.protected|tostring) + " |" ')
+
+          if [ "$DELETE_MODE" = "notify" ] || [ "$DRY_RUN" = "true" ]; then
+            body+="\n\nThis run was a dry run (no deletions performed)." 
+            # Create or update an issue for notification
+            title="Branch cleanup report — ${REPO} — $(date -u +"%Y-%m-%d")"
+            echo "Creating issue: $title"
+            gh api -X POST /repos/${OWNER}/${REPO}/issues -f title="$title" -f body="$body"
+            echo "Issue created with branch candidate list."
+            exit 0
+          fi
+
+          if [ "$DELETE_MODE" = "delete" ]; then
+            echo "Proceeding to delete branches (not a dry run)."
+            echo "$candidates_json" | jq -r '.[].name' | while IFS= read -r branch; do
+              # URL-encode the branch name for API path
+              encoded=$(printf '%s' "$branch" | jq -s -R -r @uri)
+              echo "Deleting branch: $branch"
+              if gh api -X DELETE "/repos/${OWNER}/${REPO}/git/refs/heads/${encoded}" >/dev/null 2>&1; then
+                echo "Deleted branch: $branch"
+              else
+                echo "Failed to delete branch: $branch (may be protected or not found)"
+              fi
+            done
+
+            # Create an issue with the report of deletions
+            title="Branch cleanup — deletions performed — ${REPO} — $(date -u +"%Y-%m-%d")"
+            gh api -X POST /repos/${OWNER}/${REPO}/issues -f title="$title" -f body="$body"
+            echo "Deletion run complete and report issue created."
+            exit 0
+          fi
+
+          echo "Unknown DELETE_MODE: $DELETE_MODE"
+          exit 1
