@@ -1,0 +1,138 @@
+# Branch cleanup workflow — default: dry run and notify only.
+# Run manually (workflow_dispatch) for testing, or let it run nightly.
+name: "Branch Cleanup"
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # daily at 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      days_inactive:
+        description: 'Days since last commit to consider stale'
+        required: false
+        default: '90'
+      delete_mode:
+        description: 'notify or delete'
+        required: false
+        default: 'notify'
+      dry_run:
+        description: 'true = do not delete, only report'
+        required: false
+        default: 'true'
+
+permissions:
+  contents: write       # needed to delete refs
+  pull-requests: read   # inspect PRs
+  issues: write         # create notification issues
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set variables
+        id: vars
+        run: |
+          DAYS_INACTIVE="${{ github.event.inputs.days_inactive }}"
+          if [ -z "$DAYS_INACTIVE" ] || [ "$DAYS_INACTIVE" = "null" ]; then DAYS_INACTIVE=90; fi
+          DELETE_MODE="${{ github.event.inputs.delete_mode }}"
+          if [ -z "$DELETE_MODE" ] || [ "$DELETE_MODE" = "null" ]; then DELETE_MODE=notify; fi
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          if [ -z "$DRY_RUN" ] || [ "$DRY_RUN" = "null" ]; then DRY_RUN=true; fi
+          echo "DAYS_INACTIVE=$DAYS_INACTIVE" >> $GITHUB_ENV
+          echo "DELETE_MODE=$DELETE_MODE" >> $GITHUB_ENV
+          echo "DRY_RUN=$DRY_RUN" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq gh
+
+      - name: Gather repo metadata
+        id: repo
+        run: |
+          DEFAULT_BRANCH=$(gh api -H "Accept: application/vnd.github.v3+json" /repos/${{ github.repository }} --jq '.default_branch')
+          echo "DEFAULT_BRANCH=$DEFAULT_BRANCH" >> $GITHUB_ENV
+
+      - name: List branches and evaluate candidates
+        id: evaluate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OWNER="${GITHUB_REPOSITORY%/*}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          DEFAULT_BRANCH="$DEFAULT_BRANCH"
+          DAYS="$DAYS_INACTIVE"
+          DELETE_MODE="$DELETE_MODE"
+          DRY_RUN="$DRY_RUN"
+
+          # Patterns: adjust defaults here if you want different targets
+          BRANCH_PATTERNS="feature/*,wip/*,bugfix/*"
+          EXCLUDE_PATTERNS="main,master,release/*,hotfix/*"
+
+          iso_to_epoch() { date -d "$1" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$1" +%s 2>/dev/null || echo 0; }
+
+          now_epoch=$(date +%s)
+          candidates_json="[]"
+
+          page=1
+          per_page=100
+          while :; do
+            resp=$(gh api -H "Accept: application/vnd.github.v3+json" "/repos/${OWNER}/${REPO}/branches?per_page=${per_page}&page=${page}")
+            cnt=$(echo "$resp" | jq 'length')
+            if [ "$cnt" -eq 0 ]; then
+              break
+            fi
+
+            for i in $(seq 0 $(($cnt - 1))); do
+              name=$(echo "$resp" | jq -r ".[$i].name")
+              commit_date=$(echo "$resp" | jq -r ".[$i].commit.commit.committer.date")
+              commit_epoch=$(iso_to_epoch "$commit_date")
+              if [ "$commit_epoch" -eq 0 ]; then age_days=99999; else age_days=$(( (now_epoch - commit_epoch) / 86400 )); fi
+
+              if [ "$name" = "$DEFAULT_BRANCH" ]; then
+                continue
+              fi
+
+              # Exclude patterns
+              skip=false
+              IFS=',' read -ra exps <<< "$EXCLUDE_PATTERNS"
+              for p in "${exps[@]}"; do
+                if [ -z "$p" ]; then continue; fi
+                if [[ "$p" == *"*"* ]]; then
+                  regex="^${p//\*/.*}$"
+                  if [[ "$name" =~ $regex ]]; then skip=true; break; fi
+                else
+                  if [ "$name" = "$p" ]; then skip=true; break; fi
+                fi
+              done
+              if [ "$skip" = "true" ]; then continue; fi
+
+              # Include patterns
+              include=false
+              if [ -z "$BRANCH_PATTERNS" ]; then
+                include=true
+              else
+                IFS=',' read -ra incs <<< "$BRANCH_PATTERNS"
+                for p in "${incs[@]}"; do
+                  if [ -z "$p" ]; then continue; fi
+                  if [[ "$p" == *"*"* ]]; then
+                    regex="^${p//\*/.*}$"
+                    if [[ "$name" =~ $regex ]]; then include=true; break; fi
+                  else
+                    if [ "$name" = "$p" ]; then include=true; break; fi
+                  fi
+                done
+              fi
+              if [ "$include" = "false" ]; then continue; fi
+
+              # Branch protection
+              protected=false
+              gh api -H "Accept: application/vnd.github.v3+json" "/repos/${OWNER}/${REPO}/branches/${name}/protection" >/dev/null 2>&1 && protected=true || protected=false
+
+              # Open PRs
+              prs_open=$(gh api -H "Accept: application/vnd.github.v3+json" "/repos/${OWNER}/${REPO}/pulls?state=open&head=${OWNER}:${name}" --jq 'length' || echo 0)
+
+              # Closed PRs - check if merged
+              prs_closed=$(gh api -H "Accept: application/vnd.github.v3+json" "/repos/${OWNER}/${REPO}/pulls?state=closed&head=${OWNER}:${name}" || echo "[]")
+              merged=false
+              closed_cnt=$(echo "$prs_closed
