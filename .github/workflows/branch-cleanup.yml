@@ -49,6 +49,8 @@ jobs:
 
       - name: Gather repo metadata
         id: repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DEFAULT_BRANCH=$(gh api -H "Accept: application/vnd.github.v3+json" /repos/${{ github.repository }} --jq '.default_branch')
           echo "DEFAULT_BRANCH=$DEFAULT_BRANCH" >> $GITHUB_ENV
