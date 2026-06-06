@@ -28,8 +28,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history so the commit hash is available
+          
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      # --- CRITICAL STEP: Write the commit hash to Jekyll's data folder ---
+      - name: Save Git Commit Hash to Jekyll Data
+        run: |
+          mkdir -p _data
+          echo "short_sha: $(git rev-parse --short HEAD)" > _data/hash.yaml
+          
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
